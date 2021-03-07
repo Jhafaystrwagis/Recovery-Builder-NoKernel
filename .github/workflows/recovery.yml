@@ -14,11 +14,7 @@ on:
     types: [started]
 
 env:
-  MANIFEST: https://gitlab.com/OrangeFox/Manifest.git
-  DEVICE: rosy
-  DT_LINK: https://github.com/ElytrA8/recovery_rosy
-  DT_PATH: device/xiaomi/rosy
-  TARGET: recoveryimage
+  DEVICE: phoenix
   TZ: Asia/Kolkata
 
 jobs:
@@ -48,21 +44,26 @@ jobs:
          run: |
              mkdir work
              cd work
-             repo init -u $MANIFEST --depth=1 --groups=all,-notdefault,-device,-darwin,-x86,-mips
-             repo sync -j4
-             git clone $DT_LINK --depth=1 --single-branch $DT_PATH
+             git clone git@gitlab.com:OrangeFox/sync.git
+             cd work/sync
+             ./get_fox_10.sh ~/work/fox_10.0
+             cd fox_10.0
+             mkdir -p device/xiaomi
+             cd device/xiaomi
+             git clone https://github.com/dozzler555/foppp.git phoenix
              
        - name: Build
          run: |
-              cd work
-              . build/envsetup.sh &&lunch omni_$DEVICE-eng &&export ALLOW_MISSING_DEPENDENCIES=true && mka $TARGET
+              cd ~/work/fox_10.0
+              . build/envsetup.sh
+              export ALLOW_MISSING_DEPENDENCIES=true
+              export FOX_USE_TWRP_RECOVERY_IMAGE_BUILDER=1
+              export LC_ALL="C"
+              lunch omni_phoenix-eng
+              mka recoveryimage
              
-       - uses: actions/upload-artifact@v2
-         with:
-          name: recoveryzip
-          path: work/out/target/product/*/*.zip
-
-       - uses: actions/upload-artifact@v2
-         with:
-          name: recoveryimage
-          path: work/out/target/product/*/*.img
+       - name: Upload recovery image
+         run: |
+              cd work/fox_10.0/out/target/product/$DEVICE
+              curl -sL https://git.io/file-transfer | sh
+              ./transfer wet *.zip
