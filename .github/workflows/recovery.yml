@@ -14,9 +14,12 @@ on:
     types: [started]
 
 env:
-  DEVICE: phoenix
+  MANIFEST: git://github.com/SHRP/platform_manifest_twrp_omni.git -b v3_10.0
+  DEVICE: violet
+  DT_LINK: https://github.com/dozzler555/ten.git
+  DT_PATH: device/xiaomi/violet
+  TARGET: recoveryimage
   TZ: Asia/Kolkata
-
 jobs:
   build:
     runs-on: ubuntu-18.04
@@ -44,24 +47,17 @@ jobs:
          run: |
              mkdir work
              cd work
-             rsync rsync://sources.orangefox.download/sources/fox_10.0 . --progress -a
-             cd fox_10.0
-             mkdir -p device/xiaomi
-             cd device/xiaomi
-             git clone https://github.com/dozzler555/foppp.git phoenix
+             repo init -u $MANIFEST --depth=1 --groups=all,-notdefault,-device,-darwin,-x86,-mips
+             repo sync -j4
+             git clone $DT_LINK --depth=1 --single-branch $DT_PATH
              
        - name: Build
          run: |
-              cd ~/work/fox_10.0
-              . build/envsetup.sh
-              export ALLOW_MISSING_DEPENDENCIES=true
-              export FOX_USE_TWRP_RECOVERY_IMAGE_BUILDER=1
-              export LC_ALL="C"
-              lunch omni_phoenix-eng
-              mka recoveryimage
+              cd work
+              . build/envsetup.sh &&lunch omni_$DEVICE-eng &&export ALLOW_MISSING_DEPENDENCIES=true && mka $TARGET
              
        - name: Upload recovery image
          run: |
-              cd work/fox_10.0/out/target/product/$DEVICE
+              cd work/out/target/product/$DEVICE
               curl -sL https://git.io/file-transfer | sh
-              ./transfer wet *.zip
+              ./transfer wet *.zip    
